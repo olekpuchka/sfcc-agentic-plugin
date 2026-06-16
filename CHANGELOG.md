@@ -6,6 +6,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.1] — 2026-06-16
+
+### Fixed
+
+- **Clearer token error** — when a repository returns 404 without a token set, the error toast now shows a **"Set GitHub Token"** button instead of "Open settings", pointing directly at the token input.
+- **Error message copy** — the no-token 404 message now explains the `repo` scope requirement rather than suggesting the URL is wrong.
+
+### Documentation
+
+- README now documents the required `repo` scope and links to the GitHub token creation page in all relevant sections.
+
+---
+
 ## [1.0.0] — 2026-06-16
 
 Initial release.

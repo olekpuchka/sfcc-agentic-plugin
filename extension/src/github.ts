@@ -31,9 +31,11 @@ function encodeRepoSlug(repo: string): string {
 
 /** Thrown when the error is caused by a misconfigured repository URL (not a transient failure). */
 export class ConfigError extends Error {
-  constructor(message: string) {
+  needsToken?: boolean;
+  constructor(message: string, needsToken?: boolean) {
     super(message);
     this.name = "ConfigError";
+    this.needsToken = needsToken;
   }
 }
 
@@ -168,6 +170,12 @@ async function getJson(
     throw rateLimitError(headers);
   }
   if (status === 404) {
+    if (!token) {
+      throw new ConfigError(
+        `Repository not found. If this is a private repository, set a GitHub token with the \`repo\` scope.`,
+        true
+      );
+    }
     throw new ConfigError(`Repository not found. Check the repository URL in extension settings.`);
   }
   if (status < 200 || status >= 300) {

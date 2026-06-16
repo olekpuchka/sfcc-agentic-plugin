@@ -71,7 +71,7 @@ The extension syncs from any GitHub repository you own. Here's how to set one up
    }
    ```
    `Claude/instructions/style.md` → `.claude/instructions/style.md`, and so on.
-4. If your repo is private or behind SAML SSO, run **AI Setup Sync: Set GitHub Token** from the command palette and authorize the token for your org in GitHub (*Settings → Personal access tokens → Configure SSO*).
+4. If your repo is private or behind SAML SSO, run **AI Setup Sync: Set GitHub Token** from the command palette. [Create a GitHub personal access token](https://github.com/settings/tokens/new) with the **`repo`** scope, then — for SAML SSO orgs — authorize it for your org on GitHub (*Settings → Personal access tokens → Configure SSO → Authorize*).
 5. If your default branch is not `main`, set `aiSetupSync.branch` to match (e.g. `master`).
 6. Push changes to your branch — every project syncs automatically on the next open or background check.
 
@@ -93,10 +93,10 @@ By default, the extension syncs these paths from the `main` branch (configurable
 
 Configurable via `aiSetupSync.targetFolders` — add or remove any folder or file.
 
-> **Private and SSO-protected repositories** require a GitHub personal access token. Run
+> **Private and SSO-protected repositories** require a GitHub personal access token with the **`repo`** scope — [create one here](https://github.com/settings/tokens/new). Run
 > **AI Setup Sync: Set GitHub Token** from the command palette to store it securely in the
 > OS keychain. For SAML SSO repos, also authorize the token for your organisation in GitHub:
-> *Settings → Personal access tokens → Configure SSO*.
+> *Settings → Personal access tokens → Configure SSO → Authorize*.
 
 ## Settings
 
@@ -133,7 +133,7 @@ All commands are under the **AI Setup Sync** category in the command palette (`C
 - **Sync Now** — sync immediately.
 - **Remove Synced Files** — delete synced files from the project (local edits are preserved).
 - **Open Settings** — jump to extension settings.
-- **Set GitHub Token** — securely store a GitHub personal access token in the OS keychain (required for private repos and SAML SSO org repos). Submit empty to clear.
+- **Set GitHub Token** — securely store a GitHub personal access token in the OS keychain (required for private repos and SAML SSO org repos). The token needs the **`repo`** scope; for SAML SSO orgs, also authorize it via *Settings → Personal access tokens → Configure SSO*. Submit empty to clear.
 
 Activity is logged to the **AI Setup Sync** output channel (Output panel → dropdown).
 

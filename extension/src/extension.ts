@@ -147,11 +147,19 @@ function handleSyncError(err: unknown, interactive: boolean): void {
   setStatus("error", msg);
   if (interactive) {
     if (err instanceof ConfigError) {
-      void vscode.window.showErrorMessage(`AI Setup Sync: ${msg}`, "Open settings").then((choice) => {
-        if (choice) {
-          void vscode.commands.executeCommand("workbench.action.openSettings", `${CONFIG}.repository`);
-        }
-      });
+      if (err.needsToken) {
+        void vscode.window.showErrorMessage(`AI Setup Sync: ${msg}`, "Set GitHub Token").then((choice) => {
+          if (choice) {
+            void vscode.commands.executeCommand(`${CONFIG}.setGitHubToken`);
+          }
+        });
+      } else {
+        void vscode.window.showErrorMessage(`AI Setup Sync: ${msg}`, "Open settings").then((choice) => {
+          if (choice) {
+            void vscode.commands.executeCommand("workbench.action.openSettings", `${CONFIG}.repository`);
+          }
+        });
+      }
     } else {
       void vscode.window.showErrorMessage(`AI Setup Sync: sync failed: ${msg}`);
     }
