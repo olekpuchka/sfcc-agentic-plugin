@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-export const REMOTE_SCHEME = "sfcc-remote";
+export const REMOTE_SCHEME = "ai-setup-sync-remote";
 
 const cache = new Map<string, string>();
 const MAX_CACHE_ENTRIES = 20;
