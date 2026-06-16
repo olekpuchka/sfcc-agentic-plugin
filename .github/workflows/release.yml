@@ -1,0 +1,58 @@
+name: Release extension
+
+# Push a v* tag to publish the extension to the VS Code Marketplace:
+#   git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: extension/package-lock.json
+
+      - name: Install dependencies
+        working-directory: extension
+        run: npm ci
+
+      - name: Sync version with tag
+        working-directory: extension
+        run: npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
+
+      - name: Publish to VS Code Marketplace
+        working-directory: extension
+        env:
+          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+        run: npx vsce publish -p "$VSCE_TOKEN"
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VERSION" '
+            /^## \[/ { found = ($0 ~ ("^## \\[" ver "\\]")) }
+            found && /^---/ { exit }
+            found && !/^## \[/ { print }
+          ' CHANGELOG.md > /tmp/release-notes.md
+          if [ ! -s /tmp/release-notes.md ]; then
+            echo "ERROR: No CHANGELOG entry found for version $VERSION" >&2
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file /tmp/release-notes.md

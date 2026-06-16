@@ -1,0 +1,162 @@
+{
+  "name": "ai-setup-sync",
+  "displayName": "AI Setup Sync",
+  "description": "Syncs shared AI setup files — Claude Code, GitHub Copilot, Cursor, Google Antigravity 2.0, OpenAI Codex and more — from a GitHub repository into your project, and keeps them current automatically.",
+  "version": "1.0.0",
+  "publisher": "olekpuchka",
+  "author": {
+    "name": "Olek Puchka"
+  },
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#000000",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "AI"
+  ],
+  "keywords": [
+    "ai",
+    "claude",
+    "claude code",
+    "copilot",
+    "cursor",
+    "codex",
+    "antigravity",
+    "sync",
+    "setup"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/olekpuchka/ai-setup-sync.git"
+  },
+  "homepage": "https://github.com/olekpuchka/ai-setup-sync",
+  "bugs": {
+    "url": "https://github.com/olekpuchka/ai-setup-sync/issues"
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "aiSetupSync.syncNow",
+        "title": "Sync Now",
+        "category": "AI Setup Sync"
+      },
+      {
+        "command": "aiSetupSync.removeSyncedFiles",
+        "title": "Remove Synced Files",
+        "category": "AI Setup Sync"
+      },
+      {
+        "command": "aiSetupSync.openSettings",
+        "title": "Open Settings",
+        "category": "AI Setup Sync"
+      },
+      {
+        "command": "aiSetupSync.setGitHubToken",
+        "title": "Set GitHub Token",
+        "category": "AI Setup Sync"
+      }
+    ],
+    "configuration": {
+      "title": "AI Setup Sync",
+      "properties": {
+        "aiSetupSync.repository": {
+          "order": 1,
+          "type": "string",
+          "default": "",
+          "markdownDescription": "GitHub repository URL to sync setup files from, e.g. `https://github.com/your-org/your-repo`. Private repos and SAML SSO org repos require a token — [Set GitHub Token](command:aiSetupSync.setGitHubToken)."
+        },
+        "aiSetupSync.branch": {
+          "order": 2,
+          "type": "string",
+          "default": "main",
+          "markdownDescription": "Branch to sync setup files from. Defaults to `main` — set to `master` or any other branch name if your repo uses a different default."
+        },
+        "aiSetupSync.targetFolders": {
+          "order": 3,
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "default": [
+            ".claude",
+            "CLAUDE.md",
+            ".github",
+            ".cursor",
+            ".agents",
+            "AGENTS.md",
+            ".codex"
+          ],
+          "markdownDescription": "Files and folders to sync from the repo root. Anything outside these paths is ignored. Add custom paths for any tool that reads config from your project. Defaults cover Claude Code, GitHub Copilot, Cursor, Google Antigravity 2.0, and OpenAI Codex."
+        },
+        "aiSetupSync.pathMappings": {
+          "order": 4,
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "markdownDescription": "Rename paths as files are synced from the repo to your project. `\"Claude\": \".claude\"` rewrites `Claude/instructions/style.md` → `.claude/instructions/style.md`. More specific (longer) keys always win. Leave empty if your repo already uses the paths AI tools expect. [Learn more](https://github.com/olekpuchka/ai-setup-sync/blob/main/extension/README.md#settings)"
+        },
+        "aiSetupSync.syncMode": {
+          "order": 6,
+          "type": "string",
+          "enum": [
+            "always",
+            "onOpen",
+            "manual"
+          ],
+          "enumDescriptions": [
+            "Sync when a workspace opens and re-check daily in the background.",
+            "Sync when a workspace opens only — no background polling.",
+            "Never sync automatically — only when you run 'Sync Now'."
+          ],
+          "default": "always",
+          "description": "When to sync setup files automatically."
+        },
+        "aiSetupSync.conflictPolicy": {
+          "order": 5,
+          "type": "string",
+          "enum": [
+            "prompt",
+            "overwrite",
+            "skip"
+          ],
+          "enumDescriptions": [
+            "Ask before overwriting. Each file dialog includes a 'Show diff' button so you can compare before deciding.",
+            "Always replace local files with the repository version without asking.",
+            "Never touch files you have modified locally — only add new files and update unmodified ones."
+          ],
+          "default": "prompt",
+          "description": "How to handle files you've edited locally that differ from the repository version."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "vscode:uninstall": "node ./dist/uninstall.js",
+    "clean": "rm -rf dist",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "npm run clean && tsc -p ./",
+    "lint": "tsc -p ./ --noEmit",
+    "vsce:package": "vsce package --no-dependencies --out /tmp/ai-setup-sync.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
+    "typescript": "^6.0.3"
+  }
+}
