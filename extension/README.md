@@ -1,7 +1,7 @@
 # AI Setup Sync
 
 Keep your team's AI setup files — Claude Code, GitHub Copilot, Cursor, Google Antigravity 2.0,
-OpenAI Codex, and more — in sync across every project, automatically.
+Gemini CLI, OpenAI Codex, and more — in sync across every project, automatically.
 
 AI teams maintain per-tool configuration files: system prompts, coding instructions, agent skills,
 Copilot rules. Keeping them consistent across dozens of projects and developers is manual and
@@ -17,7 +17,7 @@ detects conflicts and lets them choose what to keep.
 ## Features
 
 - **Automatic sync** — pulls on project open and re-checks daily in the background.
-- **Multi-tool support** — Claude Code, GitHub Copilot, Cursor, Google Antigravity 2.0, OpenAI Codex, and any custom paths.
+- **Multi-tool support** — Claude Code, GitHub Copilot, Cursor, Google Antigravity 2.0, Gemini CLI, OpenAI Codex, and any custom paths.
 - **Conflict resolution** — detects local edits and prompts per file, with a built-in diff viewer before overwriting.
 - **Path mappings** — translate repo folder names to the local paths tools expect (e.g. `Claude/` → `.claude/`).
 - **Configurable branch** — sync from `main`, `master`, or any branch your repo uses.
@@ -56,6 +56,9 @@ The extension syncs from any GitHub repository you own. Here's how to set one up
    ├── .agents/
    │   └── skills/
    │       └── code-review.md             # Google Antigravity 2.0 skills
+   ├── .gemini/
+   │   └── settings.json                  # Gemini CLI config
+   ├── GEMINI.md                          # Gemini CLI workspace context
    └── .codex/
        └── config.toml                    # OpenAI Codex config
    ```
@@ -89,6 +92,8 @@ By default, the extension syncs these paths from the `main` branch (configurable
 | `.cursor` | Cursor |
 | `.agents` | Google Antigravity 2.0 |
 | `AGENTS.md` | Google Antigravity 2.0 (also read by Cursor and Claude Code) |
+| `.gemini` | Gemini CLI |
+| `GEMINI.md` | Gemini CLI |
 | `.codex` | OpenAI Codex |
 
 Configurable via `aiSetupSync.targetFolders` — add or remove any folder or file.

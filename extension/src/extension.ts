@@ -65,7 +65,7 @@ function setStatus(
 
 type SyncMode = "always" | "onOpen" | "manual";
 
-const DEFAULT_TARGET_FOLDERS = [".claude", "CLAUDE.md", ".github", ".cursor", ".agents", "AGENTS.md", ".codex"];
+const DEFAULT_TARGET_FOLDERS = [".claude", "CLAUDE.md", ".github", ".cursor", ".agents", "AGENTS.md", ".gemini", "GEMINI.md", ".codex"];
 
 interface Settings {
   repository: string;

@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.4] — 2026-06-16
+
+### Added
+
+- **Gemini CLI support** — `.gemini` and `GEMINI.md` added to default synced paths.
+
+---
+
 ## [1.0.3] — 2026-06-16
 
 ### Fixed

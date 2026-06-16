@@ -5,7 +5,7 @@ Thank you for your interest in contributing. This guide covers everything you ne
 ## What this project is
 
 This repo is the **AI Setup Sync** VS Code extension — it syncs shared AI setup files
-(Claude Code, GitHub Copilot, Cursor, Google Antigravity 2.0, OpenAI Codex, and more) from any GitHub repository you
+(Claude Code, GitHub Copilot, Cursor, Google Antigravity 2.0, Gemini CLI, OpenAI Codex, and more) from any GitHub repository you
 own into your projects.
 
 | Path | What it is |

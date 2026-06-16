@@ -1,8 +1,8 @@
 {
   "name": "ai-setup-sync",
   "displayName": "AI Setup Sync",
-  "description": "Syncs shared AI setup files — Claude Code, GitHub Copilot, Cursor, Google Antigravity 2.0, OpenAI Codex and more — from a GitHub repository into your project, and keeps them current automatically.",
-  "version": "1.0.3",
+  "description": "Syncs shared AI setup files — Claude Code, GitHub Copilot, Cursor, Google Antigravity 2.0, Gemini CLI, OpenAI Codex and more — from a GitHub repository into your project, and keeps them current automatically.",
+  "version": "1.0.4",
   "publisher": "olekpuchka",
   "author": {
     "name": "Olek Puchka"
@@ -30,6 +30,7 @@
     "antigravity",
     "sync",
     "setup",
+    "gemini",
     "ai config",
     "ai instructions",
     "dotfiles",
@@ -99,9 +100,11 @@
             ".cursor",
             ".agents",
             "AGENTS.md",
-            ".codex"
+            ".codex",
+            ".gemini",
+            "GEMINI.md"
           ],
-          "markdownDescription": "Files and folders to sync from the repo root. Anything outside these paths is ignored. Add custom paths for any tool that reads config from your project. Defaults cover Claude Code, GitHub Copilot, Cursor, Google Antigravity 2.0, and OpenAI Codex."
+          "markdownDescription": "Files and folders to sync from the repo root. Anything outside these paths is ignored. Add custom paths for any tool that reads config from your project. Defaults cover Claude Code, GitHub Copilot, Cursor, Google Antigravity 2.0, Gemini CLI, and OpenAI Codex."
         },
         "aiSetupSync.pathMappings": {
           "order": 4,

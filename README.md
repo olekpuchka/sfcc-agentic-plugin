@@ -1,7 +1,7 @@
 # AI Setup Sync
 
 A VS Code extension that syncs shared AI setup files — Claude Code, GitHub Copilot, Cursor,
-Google Antigravity 2.0, OpenAI Codex, and more — from a GitHub repository into your project, and keeps them current automatically.
+Google Antigravity 2.0, Gemini CLI, OpenAI Codex, and more — from a GitHub repository into your project, and keeps them current automatically.
 
 You maintain one GitHub repository with your team's setup files. The extension pulls from it
 on every project open and checks for updates daily.
