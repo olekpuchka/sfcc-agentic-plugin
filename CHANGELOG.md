@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.6] — 2026-06-17
+
+### Fixed
+
+- **Target folders toggle** — toggling a default folder off (e.g. `".claude": false`) now correctly excludes it. Previously, a partial user config caused a fallback to all defaults, making toggles ineffective.
+- **Trailing slash in custom paths** — custom target folder paths with a trailing slash (e.g. `.myTool/`) are now normalized so they match correctly.
+
+---
+
 ## [1.0.5] — 2026-06-17
 
 ### Changed

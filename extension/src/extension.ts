@@ -66,6 +66,7 @@ function setStatus(
 type SyncMode = "always" | "onOpen" | "manual";
 
 const DEFAULT_TARGET_FOLDERS = [".claude", "CLAUDE.md", ".github", ".cursor", ".agents", "AGENTS.md", ".gemini", "GEMINI.md", ".codex"];
+const DEFAULT_TARGET_MAP: Record<string, boolean> = Object.fromEntries(DEFAULT_TARGET_FOLDERS.map((f) => [f, true]));
 
 interface Settings {
   repository: string;
@@ -79,8 +80,8 @@ interface Settings {
 function readSettings(): Settings {
   const c = vscode.workspace.getConfiguration(CONFIG);
   const raw = c.get<Record<string, boolean>>("targetFolders");
-  const enabled = raw && typeof raw === "object" ? Object.entries(raw).filter(([, on]) => on).map(([f]) => f) : [];
-  const targetFolders = enabled.length > 0 ? enabled : DEFAULT_TARGET_FOLDERS;
+  const merged = raw && typeof raw === "object" ? { ...DEFAULT_TARGET_MAP, ...raw } : DEFAULT_TARGET_MAP;
+  const targetFolders = Object.entries(merged).filter(([, on]) => on).map(([f]) => f.replace(/\/+$/, ""));
   // Normalize trailing slashes on both keys and values to prevent silent mismatches.
   const rawMappings = c.get<Record<string, string>>("pathMappings") ?? {};
   const pathMappings: Record<string, string> = {};
