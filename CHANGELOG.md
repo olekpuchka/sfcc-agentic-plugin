@@ -6,6 +6,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.1] — 2026-06-21
+
+### Changed
+
+- **Marketplace keywords** — optimised for discoverability within the VS Code Marketplace 10-keyword limit; added "claude sync" as an explicit phrase, retained the highest-signal terms for each supported tool.
+- **Extension description** — reworded to be tool-neutral and lead with the shared-repo concept rather than listing individual tools.
+- **Manual sync mode description** — clarified to read "Only sync when you click AI Setup Sync in the status bar or run Sync Now from the command palette."
+
+### Documentation
+
+- **README rewritten** — professional rewrite with badge row, table of contents, "How it works" section, streamlined features list, numbered setup steps, commands table, FAQ (6 Q&As), and renamed sections for clarity.
+- **Root README and CONTRIBUTING.md** updated — badge row, clearer orientation callout, table of contents in CONTRIBUTING, and consistent polish throughout.
+- **Classic token** — all references to GitHub tokens now specify **classic** personal access tokens (fine-grained tokens don't support the `repo` scope) across README, settings descriptions, and the token input prompt.
+- **License** — `extension/LICENSE.md` now includes the copyright holder name (was missing from the packaged VSIX).
+
+---
+
 ## [1.1.0] — 2026-06-20
 
 ### Changed
