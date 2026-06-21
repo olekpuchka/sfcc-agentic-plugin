@@ -255,7 +255,6 @@ All commands are under the **AI Setup Sync** category in the command palette
 | --- | --- |
 | **Sync Now** | Sync immediately. |
 | **Remove Synced Files** | Delete synced files from the project (local edits are preserved). |
-| **Open Settings** | Jump to extension settings. |
 | **Set GitHub Token** | Securely store a GitHub PAT in the OS keychain (required for private and SAML SSO org repos). Use a **classic** token with the **`repo`** scope; for SAML SSO orgs, also authorize it via *Settings → Personal access tokens → Configure SSO*. Submit empty to clear. |
 
 Activity is logged to the **AI Setup Sync** output channel (Output panel → dropdown).

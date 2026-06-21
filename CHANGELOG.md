@@ -6,6 +6,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.2] — 2026-06-21
+
+### Fixed
+
+- **Changelog tab missing in VS Code extension view** — `CHANGELOG.md` is now bundled with the VSIX so the Changelog tab appears in the Extensions panel.
+
+### Removed
+
+- **Open Settings command** — removed the `AI Setup Sync: Open Settings` command palette entry; the native VS Code settings search (`aiSetupSync`) covers this without the extra command.
+
+---
+
 ## [1.1.1] — 2026-06-21
 
 ### Changed

@@ -398,9 +398,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(`${CONFIG}.removeSyncedFiles`, () =>
       removeSyncedFiles(context)
     ),
-    vscode.commands.registerCommand(`${CONFIG}.openSettings`, () =>
-      vscode.commands.executeCommand("workbench.action.openSettings", CONFIG)
-    ),
     vscode.commands.registerCommand(`${CONFIG}.setGitHubToken`, async () => {
       const existing = await getToken(context);
       const input = await vscode.window.showInputBox({

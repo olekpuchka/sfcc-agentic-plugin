@@ -2,7 +2,7 @@
   "name": "ai-setup-sync",
   "displayName": "AI Setup Sync",
   "description": "Sync AI setup files — Claude Code, GitHub Copilot, Cursor, Gemini CLI, OpenAI Codex, and more — across every project from a shared GitHub repository, automatically.",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "publisher": "olekpuchka",
   "author": {
     "name": "Olek Puchka"
@@ -54,11 +54,6 @@
       {
         "command": "aiSetupSync.removeSyncedFiles",
         "title": "Remove Synced Files",
-        "category": "AI Setup Sync"
-      },
-      {
-        "command": "aiSetupSync.openSettings",
-        "title": "Open Settings",
         "category": "AI Setup Sync"
       },
       {
@@ -151,7 +146,7 @@
     "clean": "rm -rf dist",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "npm run clean && tsc -p ./",
+    "package": "npm run clean && cp ../CHANGELOG.md . && tsc -p ./",
     "lint": "tsc -p ./ --noEmit",
     "vsce:package": "vsce package --no-dependencies --out /tmp/ai-setup-sync.vsix"
   },
