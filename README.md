@@ -9,8 +9,8 @@
 
 A VS Code extension that keeps your AI configuration — for Claude Code, GitHub Copilot, Cursor,
 Google Antigravity, Gemini CLI, OpenAI Codex, and more — identical across every project. Maintain
-it once in a GitHub repository; the extension pulls it into each project on open and re-checks
-daily, so no one ever copy-pastes a `CLAUDE.md` between repos again.
+it once in a GitHub repository; the extension pulls it into each project on open and whenever you
+return to the window, so no one ever copy-pastes a `CLAUDE.md` between repos again.
 
 > **📖 Looking for usage docs?** This page orients you to the repository. For installation,
 > settings, conflict handling, path mappings, and the FAQ, see
@@ -19,7 +19,7 @@ daily, so no one ever copy-pastes a `CLAUDE.md` between repos again.
 
 ## What it does
 
-- **Syncs automatically** — pulls on project open and re-checks daily in the background.
+- **Syncs automatically** — pulls on project open and when you return focus to the window.
 - **Supports every tool** — Claude Code, Copilot, Cursor, Antigravity, Gemini CLI, Codex, or any custom path.
 - **Protects local edits** — detects files you've changed and prompts before overwriting, with a built-in diff.
 - **Stays out of git** — synced files are added to `.git/info/exclude`, never cluttering your changes.

@@ -40,8 +40,8 @@ Treat your AI setup like shared code: change it in one place, and it propagates 
    `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/`, and so on.
 2. **Point every project at it.** Each developer installs the extension and sets one setting:
    the repository URL.
-3. **Files sync automatically.** On project open and once daily in the background, the extension
-   pulls the latest files into each project.
+3. **Files sync automatically.** On project open and whenever you return focus to the window, the
+   extension pulls the latest files into each project.
 
 Sync flows one way: **repo → projects**. Developers can still edit files locally — the extension
 detects those edits and lets them choose what to keep, so no work is ever silently overwritten.
@@ -51,14 +51,14 @@ detects those edits and lets them choose what to keep, so no work is ever silent
 
 ## Features
 
-- **Automatic sync** — pulls on project open and re-checks daily in the background. No manual steps.
+- **Automatic sync** — pulls on project open and when you return focus to the window. No manual steps.
 - **Multi-tool support** — Claude Code, GitHub Copilot, Cursor, Google Antigravity, Gemini CLI, OpenAI Codex, and any custom path.
 - **Conflict resolution** — detects local edits and prompts per file, with a built-in diff viewer before anything is overwritten.
 - **Path mappings** — translate any repo path to the local path a tool expects (e.g. `Claude/` → `.claude/`, or `PlatformA/.claude/` → `.claude/`).
 - **Safe deletions** — files removed from the repo are removed locally too; your local edits are protected, and emptied directories are cleaned up.
 - **Stays out of git** — synced files are added to `.git/info/exclude`, so they never clutter your pending changes.
 - **Private & SSO repos** — GitHub token stored securely in the OS keychain (VS Code SecretStorage).
-- **Configurable** — choose the branch, which folders to sync, how conflicts resolve, and when syncing runs.
+- **Configurable** — choose the branch, which folders to sync, and how conflicts resolve.
 
 ## Quick start
 
@@ -125,7 +125,7 @@ authorize it for your org (*Settings → Personal access tokens → Configure SS
 
 **5. Set the branch if it isn't `main`** — set `aiSetupSync.branch` to match (e.g. `master`).
 
-**6. Push and you're done.** Every project syncs automatically on the next open or background check.
+**6. Push and you're done.** Every project picks up the change the next time it's opened or refocused.
 
 > **Shared vs project-specific files:** Add shared instructions to the central repo and open a PR —
 > on merge they sync to every project. Keep project-specific files in your project repo; the
@@ -158,8 +158,7 @@ Configure via `aiSetupSync.targetFolders` — toggle defaults on or off, or add 
 | `aiSetupSync.branch` | `main` | Branch to sync from. Set to `master` or any other branch if your repo uses a different default. |
 | `aiSetupSync.targetFolders` | *(see above)* | Files and folders to sync from the repo root. Each entry can be toggled on or off — set to `false` to disable a default without removing it. Add entries for any tool that reads config from your project. |
 | `aiSetupSync.pathMappings` | `{}` | Rename paths as files sync from the repo to your project. `"Claude": ".claude"` rewrites `Claude/instructions/style.md` → `.claude/instructions/style.md`. More specific (longer) keys win. |
-| `aiSetupSync.conflictPolicy` | `prompt` | How to handle files you've edited locally that differ from the repo. `prompt` — ask per file, with a *Show diff* button. `overwrite` — always replace. `skip` — never touch local edits. |
-| `aiSetupSync.syncMode` | `always` | When to sync automatically. `always` — on open + daily background check. `onOpen` — on open only. `manual` — only when you run *Sync Now*. |
+| `aiSetupSync.conflictPolicy` | `prompt` | What to do when a local file differs from the repo version. `prompt` — ask per file, with a *Show diff* button. `overwrite` — always replace. `skip` — never touch local edits. |
 
 ## Path mappings & multi-project repos
 
@@ -277,6 +276,12 @@ output channel, and a **Force remove all** button is offered to delete them rega
 edits.
 
 ## FAQ
+
+**When does it sync?**
+Automatically: when you open a project, when you return focus to the VS Code window (throttled so
+rapid window-switching doesn't re-sync), and shortly after you change a relevant setting or set a
+GitHub token. You can also sync on demand any time with **Sync Now** or by clicking the status bar.
+There's no schedule to configure — it just stays current at the moments you're working.
 
 **Does it ever modify files I created myself?**
 No. The extension only touches files it synced from the repo. Anything else in your project is left

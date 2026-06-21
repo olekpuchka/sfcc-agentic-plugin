@@ -4,6 +4,21 @@ All notable changes to the **AI Setup Sync** extension are documented here.
 
 ---
 
+## [1.2.0] — 2026-06-21
+
+### Changed
+
+- **Syncing is now always automatic** — the `aiSetupSync.syncMode` setting has been removed. The extension syncs on project open and whenever you return focus to the VS Code window (throttled so rapid window switching doesn't re-sync). Use **Sync Now** / the status bar to sync on demand, and `aiSetupSync.conflictPolicy` to control whether local edits are overwritten. The old `always`/`onOpen`/`manual` modes collapse to this single behavior; a leftover `aiSetupSync.syncMode` entry in your settings is harmless and can be deleted.
+- **Replaced the 24-hour background poll with a focus-based refresh** — config now updates at the moments you're actually present (so a conflict prompt lands when you can act on it), instead of a timer that could change files while you were away.
+- **Settings changes re-sync immediately** — editing the repository, branch, target folders, or path mappings now triggers a sync once the value settles (debounced ~1.5s to avoid syncing against a half-typed value), rather than waiting for the next open.
+- **Saving a GitHub token re-syncs right away** — after **Set GitHub Token**, the extension retries the sync immediately instead of waiting for the next trigger.
+
+### Fixed
+
+- **Overlapping syncs could run concurrently** — the re-entrancy guard was set only after the token was read, so two triggers firing close together (e.g. window open + focus) could both start a sync, double-fetching and showing duplicate prompts. The guard is now claimed before any async work.
+
+---
+
 ## [1.1.3] — 2026-06-21
 
 ### Fixed

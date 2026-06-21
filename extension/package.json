@@ -2,7 +2,7 @@
   "name": "ai-setup-sync",
   "displayName": "AI Setup Sync",
   "description": "Sync AI setup files — Claude Code, GitHub Copilot, Cursor, Gemini CLI, OpenAI Codex, and more — across every project from a shared GitHub repository, automatically.",
-  "version": "1.1.3",
+  "version": "1.2.0",
   "publisher": "olekpuchka",
   "author": {
     "name": "Olek Puchka"
@@ -105,22 +105,6 @@
           "default": {},
           "markdownDescription": "Rename paths as files are synced from the repo to your project. `\"Claude\": \".claude\"` rewrites `Claude/instructions/style.md` → `.claude/instructions/style.md`. More specific (longer) keys always win. Leave empty if your repo already uses the paths AI tools expect. [Learn more](https://github.com/olekpuchka/ai-setup-sync/blob/main/extension/README.md#settings)"
         },
-        "aiSetupSync.syncMode": {
-          "order": 6,
-          "type": "string",
-          "enum": [
-            "always",
-            "onOpen",
-            "manual"
-          ],
-          "enumDescriptions": [
-            "Sync when a workspace opens and re-check daily in the background.",
-            "Sync when a workspace opens only — no background polling.",
-            "Only sync when you click AI Setup Sync in the status bar or run Sync Now from the command palette."
-          ],
-          "default": "always",
-          "description": "When to sync setup files automatically."
-        },
         "aiSetupSync.conflictPolicy": {
           "order": 5,
           "type": "string",
@@ -135,7 +119,7 @@
             "Never touch files you have modified locally — only add new files and update unmodified ones."
           ],
           "default": "prompt",
-          "description": "How to handle files you've edited locally that differ from the repository version."
+          "markdownDescription": "What to do when a local file differs from the repository version."
         }
       }
     }

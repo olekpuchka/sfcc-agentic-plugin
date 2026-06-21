@@ -4,7 +4,7 @@ import { ConfigError, RateLimitError, RepoRef } from "./github";
 import { initOutput, log, showOutput } from "./output";
 import { readRegistry, setWorkspaceFiles } from "./registry";
 import { getState, saveState } from "./state";
-import { ConflictPolicy, localizeStateFiles, toastSummary, syncFolder, SyncResult } from "./sync";
+import { ConflictPolicy, localizeStateFiles, toastSummary, syncFolder } from "./sync";
 import { REMOTE_SCHEME, remoteContentProvider } from "./remoteContent";
 import { deleteToken, getToken, setToken } from "./token";
 
@@ -13,7 +13,7 @@ const CONFIG = "aiSetupSync";
 // --- Status bar -----------------------------------------------------------
 
 let statusBar: vscode.StatusBarItem | undefined;
-let lastSyncAt: number | undefined;
+let lastSyncSuccessAt: number | undefined;
 
 function relativeTime(ms: number): string {
   const secs = Math.round((Date.now() - ms) / 1000);
@@ -56,14 +56,12 @@ function setStatus(
     default:
       statusBar.text = "$(check) AI Setup Sync";
       statusBar.tooltip =
-        (lastSyncAt ? `Synced ${relativeTime(lastSyncAt)}` : "Ready") +
+        (lastSyncSuccessAt ? `Synced ${relativeTime(lastSyncSuccessAt)}` : "Ready") +
         (detail ? ` • ${detail}` : "") +
         "\nClick to sync now.";
       statusBar.backgroundColor = undefined;
   }
 }
-
-type SyncMode = "always" | "onOpen" | "manual";
 
 const DEFAULT_TARGET_FOLDERS = [".claude", "CLAUDE.md", ".github", ".cursor", ".agents", "AGENTS.md", ".gemini", "GEMINI.md", ".codex"];
 const DEFAULT_TARGET_MAP: Record<string, boolean> = Object.fromEntries(DEFAULT_TARGET_FOLDERS.map((f) => [f, true]));
@@ -73,7 +71,6 @@ interface Settings {
   branch: string;
   targetFolders: string[];
   pathMappings: Record<string, string>;
-  syncMode: SyncMode;
   conflictPolicy: ConflictPolicy;
 }
 
@@ -95,7 +92,6 @@ function readSettings(): Settings {
     branch: (c.get<string>("branch") ?? "main").trim() || "main",
     targetFolders,
     pathMappings,
-    syncMode: (c.get<string>("syncMode") as SyncMode) ?? "always",
     conflictPolicy: (c.get<string>("conflictPolicy") as ConflictPolicy) ?? "prompt",
   };
 }
@@ -110,6 +106,12 @@ function parseRepo(raw: string): string | null {
 let syncing = false;
 /** When rate-limited, background syncs/checks pause until this epoch ms. */
 let rateLimitedUntil = 0;
+/** Minimum gap between focus-triggered syncs, so rapid alt-tabbing doesn't re-sync. */
+const FOCUS_RESYNC_MIN_MS = 10 * 60 * 1000; // 10 minutes
+/** Debounce before re-syncing after a content-affecting setting change settles. */
+const CONFIG_RESYNC_DEBOUNCE_MS = 1500;
+/** Timestamp of the last committed sync *attempt* (success or failure); throttles focus syncs. */
+let lastSyncAttemptAt = 0;
 
 /** Centralized handling for a failed sync. Returns nothing; sets status + logs. */
 function handleSyncError(err: unknown, interactive: boolean): void {
@@ -218,43 +220,43 @@ async function runSync(
     return;
   }
 
-  const token = await getToken(context);
-  const repoRef: RepoRef = { repo: parseRepo(settings.repository) ?? "", url: settings.repository, ref: settings.branch, token };
-
-  const runSyncFolders = async () => {
+  const runSyncFolders = async (repoRef: RepoRef) => {
     const summaries: string[] = [];
     let changed = false;
     let noFilesFound = false;
     let hadError = false;
     for (const folder of folders) {
-      // Detect repo URL change — prompt to clean up files from the previous repo.
-      const prevState = getState(context, folder);
-      if (prevState.repoUrl && prevState.repoUrl !== settings.repository && Object.keys(prevState.files).length > 0) {
-        const choice = await vscode.window.showWarningMessage(
-          `AI Setup Sync: Repository changed to ${settings.repository}. Remove files synced from the previous repo?`,
-          { modal: true },
-          "Remove",
-          "Keep"
-        );
-        if (choice === undefined) {
-          continue; // dismissed — skip this folder
-        }
-        if (choice === "Remove") {
-          const reg = readRegistry();
-          // Registry holds local (on-disk) paths; state.files is keyed by repo
-          // path, so localize the fallback before deleting (matters with pathMappings).
-          const files =
-            reg.workspaces[folder.uri.fsPath]?.files ??
-            localizeStateFiles(prevState.files, settings.pathMappings);
-          removeManagedFiles(folder.uri.fsPath, files);
-        }
-        await saveState(context, folder, { ref: "", files: {} });
-        setWorkspaceFiles(folder.uri.fsPath, {});
-      }
-
-      let result: SyncResult;
+      // Isolate each folder: an error in the repo-change cleanup or the sync itself
+      // skips just this folder, not the rest of the workspace.
       try {
-        result = await syncFolder(
+        // Detect repo URL change — prompt to clean up files from the previous repo.
+        const prevState = getState(context, folder);
+        if (prevState.repoUrl && prevState.repoUrl !== settings.repository && Object.keys(prevState.files).length > 0) {
+          // Changing the repo is rare and deliberate, so it's worth prompting to clean up
+          // the previous repo's files — it's the only moment that decision is offered.
+          const choice = await vscode.window.showWarningMessage(
+            `AI Setup Sync: Repository changed to ${settings.repository}. Remove files synced from the previous repo?`,
+            { modal: true },
+            "Remove",
+            "Keep"
+          );
+          if (choice === undefined) {
+            continue; // dismissed — skip this folder
+          }
+          if (choice === "Remove") {
+            const reg = readRegistry();
+            // Registry holds local (on-disk) paths; state.files is keyed by repo
+            // path, so localize the fallback before deleting (matters with pathMappings).
+            const files =
+              reg.workspaces[folder.uri.fsPath]?.files ??
+              localizeStateFiles(prevState.files, settings.pathMappings);
+            removeManagedFiles(folder.uri.fsPath, files);
+          }
+          await saveState(context, folder, { ref: "", files: {} });
+          setWorkspaceFiles(folder.uri.fsPath, {});
+        }
+
+        const result = await syncFolder(
           context,
           folder,
           {
@@ -264,18 +266,15 @@ async function runSync(
             conflictPolicy: settings.conflictPolicy,
           }
         );
-      } catch (err) {
-        handleSyncError(err, interactive);
-        hadError = true;
-        continue;
-      }
-      if (result.noFilesFound) {
-        noFilesFound = true;
-      } else {
-        if (!result.noChanges) {
+        if (result.noFilesFound) {
+          noFilesFound = true;
+        } else if (!result.noChanges) {
           changed = true;
           summaries.push(toastSummary(result));
         }
+      } catch (err) {
+        handleSyncError(err, interactive);
+        hadError = true;
       }
     }
 
@@ -286,7 +285,7 @@ async function runSync(
       return;
     }
 
-    lastSyncAt = Date.now();
+    lastSyncSuccessAt = Date.now();
     rateLimitedUntil = 0; // we got through; clear any backoff
     setStatus("idle", settings.repository);
     if (noFilesFound) {
@@ -310,10 +309,21 @@ async function runSync(
     }
   };
 
+  // Claim the sync slot and stamp the attempt before the first await, so concurrent
+  // triggers (open, focus, token-save, settings-change) can't race past the `syncing`
+  // guard above, and so a failing background sync still throttles the focus trigger.
   syncing = true;
+  lastSyncAttemptAt = Date.now();
   setStatus("syncing");
   try {
-    await runSyncFolders();
+    const token = await getToken(context);
+    const repoRef: RepoRef = { repo: parseRepo(settings.repository) ?? "", url: settings.repository, ref: settings.branch, token };
+    await runSyncFolders(repoRef);
+  } catch (err) {
+    // Per-folder failures are handled inside runSyncFolders; this catches the rest
+    // (e.g. getToken rejecting on a locked keychain) so the status bar shows an error
+    // instead of spinning forever on "syncing".
+    handleSyncError(err, interactive);
   } finally {
     syncing = false;
   }
@@ -449,74 +459,70 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await setToken(context, input);
       log("GitHub token saved to secure storage.");
       void vscode.window.showInformationMessage("AI Setup Sync: GitHub token saved.");
+      void runSync(context, false);
     })
   );
 
   // Trigger: sync automatically when a workspace opens.
-  if (settings.syncMode === "always" || settings.syncMode === "onOpen") {
-    void runSync(context, false);
-  }
+  void runSync(context, false);
 
-  // Trigger: periodic background check for content + extension updates.
-  schedulePolling(context);
+  // Trigger: refresh when the user returns focus to the window — this keeps config
+  // current at the moments the user is actually present (so a conflict prompt lands
+  // when they can act on it), without a background timer changing files while away.
+  // Throttled against the last sync *attempt* (not just successes) so a repo that keeps
+  // failing over the network — bad token, 404 — doesn't re-hit the GitHub API on every
+  // alt-tab. A manual Sync Now ignores the throttle.
+  context.subscriptions.push(
+    vscode.window.onDidChangeWindowState((state) => {
+      if (!state.focused) {
+        return;
+      }
+      if (lastSyncAttemptAt && Date.now() - lastSyncAttemptAt < FOCUS_RESYNC_MIN_MS) {
+        return;
+      }
+      void runSync(context, false);
+    })
+  );
 
-  // React to setting changes: re-arm polling and refresh the status bar (so
-  // first-time setup doesn't stay stuck on "unconfigured"). Only kick a sync on
-  // the empty→configured transition — re-syncing on every unrelated setting tweak
-  // is noisy and would flash an error while the repo URL is mid-edit.
-  let lastRepository = settings.repository;
+  // React to setting changes: refresh the status bar (so first-time setup doesn't stay
+  // stuck on "unconfigured") and re-sync when a content-affecting setting changes so the
+  // result reflects the new value immediately. The re-sync is debounced: the settings UI
+  // writes on every keystroke, so syncing mid-edit (against a half-typed URL or branch)
+  // would flash an error and waste requests. We wait for the value to settle, and ignore
+  // conflictPolicy (which doesn't change the sync's inputs, only how conflicts resolve).
+  const CONTENT_KEYS = ["repository", "branch", "targetFolders", "pathMappings"];
+  let resyncTimer: NodeJS.Timeout | undefined;
+  const clearResync = () => {
+    if (resyncTimer) {
+      clearTimeout(resyncTimer);
+      resyncTimer = undefined;
+    }
+  };
+  context.subscriptions.push({ dispose: clearResync });
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (!e.affectsConfiguration(CONFIG)) {
         return;
       }
       const s = readSettings();
-      const justConfigured = !lastRepository && !!s.repository;
-      lastRepository = s.repository;
       if (!syncing) {
         setStatus(s.repository ? "idle" : "unconfigured");
       }
-      schedulePolling(context);
-      if (justConfigured && (s.syncMode === "always" || s.syncMode === "onOpen")) {
-        void runSync(context, false);
+      if (!CONTENT_KEYS.some((k) => e.affectsConfiguration(`${CONFIG}.${k}`))) {
+        return;
       }
+      clearResync();
+      const fire = () => {
+        // If a sync is already in flight, retry shortly rather than dropping the change —
+        // otherwise the edited setting wouldn't apply until the next focus/open sync.
+        if (syncing) {
+          resyncTimer = setTimeout(fire, CONFIG_RESYNC_DEBOUNCE_MS);
+          return;
+        }
+        resyncTimer = undefined;
+        void runSync(context, false);
+      };
+      resyncTimer = setTimeout(fire, CONFIG_RESYNC_DEBOUNCE_MS);
     })
   );
-}
-
-let pollTimer: NodeJS.Timeout | undefined;
-let pollDisposableRegistered = false;
-
-const POLL_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-function schedulePolling(context: vscode.ExtensionContext): void {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = undefined;
-  }
-  if (readSettings().syncMode !== "always") {
-    return;
-  }
-  pollTimer = setInterval(() => {
-    void runSync(context, false);
-  }, POLL_INTERVAL_MS);
-  // Register the dispose function only once to avoid subscription leak (OPT-4).
-  if (!pollDisposableRegistered) {
-    pollDisposableRegistered = true;
-    context.subscriptions.push({
-      dispose: () => {
-        if (pollTimer) {
-          clearInterval(pollTimer);
-          pollTimer = undefined;
-        }
-      },
-    });
-  }
-}
-
-export function deactivate(): void {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = undefined;
-  }
 }
