@@ -4,6 +4,14 @@ All notable changes to the **AI Setup Sync** extension are documented here.
 
 ---
 
+## [1.3.2] — 2026-06-25
+
+### Changed
+
+- Refreshed README and marketplace listing — problem-first intro, architecture diagram, IP protection callout, and aligned feature descriptions across both docs.
+
+---
+
 ## [1.3.1] — 2026-06-23
 
 ### Fixed
