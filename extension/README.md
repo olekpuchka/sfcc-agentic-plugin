@@ -59,7 +59,7 @@ detects those edits and lets them choose what to keep, so no work is ever silent
 - **Handles deletions safely** — files removed from the repo or excluded by a settings change are removed locally; your local edits are protected, and emptied directories are cleaned up.
 - **Stays out of git** — synced files are added to `.git/info/exclude`, so they never clutter your pending changes.
 - **Supports private, SSO, and Enterprise Server repos** — GitHub token stored securely in the OS keychain (VS Code SecretStorage).
-- **Fully configurable** — choose the branch, which folders to sync, and how conflicts resolve.
+- **Fully configurable** — choose the branch and which folders to sync.
 
 ## Requirements
 
@@ -165,7 +165,6 @@ Configure via `aiSetupSync.targetFolders` — toggle defaults on or off, or add 
 | `aiSetupSync.branch` | `main` | Branch to sync from. Set to `master` or any other branch if your repo uses a different default. |
 | `aiSetupSync.targetFolders` | *(see above)* | Files and folders to sync from the repo root. Each entry can be toggled on or off — set to `false` to disable a default without removing it. Add entries for any tool that reads config from your project. |
 | `aiSetupSync.pathMappings` | `{}` | Rename paths as files sync from the repo to your project. `"Claude": ".claude"` rewrites `Claude/instructions/style.md` → `.claude/instructions/style.md`. Use `"/"` to map a subfolder to your project root: `"projectA": "/"` syncs `projectA/.github/` as `.github/`. See [Path mappings & multi-project repos](#path-mappings--multi-project-repos) for how overlaps are resolved. |
-| `aiSetupSync.conflictPolicy` | `prompt` | What to do when a local file differs from the repo version. `prompt` — ask per file, with a *Show diff* button. `overwrite` — always replace. `skip` — never touch local edits. |
 
 ## Path mappings & multi-project repos
 
@@ -315,7 +314,7 @@ On each sync the extension compares file content against what it last wrote:
 
 - **Unmodified** → updated silently.
 - **Deleted locally** → re-added automatically.
-- **Edited locally** → handled per `aiSetupSync.conflictPolicy`. With `prompt` (default):
+- **Edited locally** → you're prompted to choose:
 
   | Choice | Effect |
   | --- | --- |
@@ -326,9 +325,8 @@ On each sync the extension compares file content against what it last wrote:
 
 **Files removed from the repo** or **excluded by a settings change** (e.g. you toggled a folder
 off in `targetFolders`, changed a `pathMappings` key, or changed its destination path) are deleted
-from your project on the next sync. Unmodified files are removed silently; files you've edited
-locally follow `aiSetupSync.conflictPolicy` — with `prompt` you're asked before deletion (Escape
-re-prompts next sync), with `skip` they're kept on disk. Directories that become empty after
+from your project on the next sync. Unmodified files are removed silently; locally-edited files
+prompt you before deletion (Escape re-prompts next sync). Directories that become empty after
 deletions are removed automatically.
 
 ## Status bar
@@ -369,9 +367,8 @@ Run **Remove Synced Files** before uninstalling for an immediate cleanup. The ex
 cleanup hook on uninstall, but it fires only after a full VS Code restart.
 
 Only files whose content matches what the extension last wrote are removed — files you edited
-locally are kept so no work is lost. If any files are kept, they're listed in the **AI Setup Sync**
-output channel, and a **Force remove all** button is offered to delete them regardless of local
-edits.
+locally are kept so no work is lost. If any files are kept, a warning toast appears with a
+**Show details** button that lists them in the **AI Setup Sync** output channel.
 
 ## FAQ
 

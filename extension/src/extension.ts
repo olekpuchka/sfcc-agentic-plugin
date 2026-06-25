@@ -1,10 +1,10 @@
 import * as vscode from "vscode";
-import { forceRemoveFiles, removeManagedFiles } from "./cleanup";
+import { removeManagedFiles } from "./cleanup";
 import { ConfigError, RateLimitError, RepoRef } from "./github";
 import { initOutput, log, showOutput } from "./output";
 import { readRegistry, setWorkspaceFiles } from "./registry";
 import { getState, saveState } from "./state";
-import { ConflictPolicy, localizeStateFiles, toastSummary, syncFolder } from "./sync";
+import { localizeStateFiles, toastSummary, syncFolder } from "./sync";
 import { REMOTE_SCHEME, remoteContentProvider } from "./remoteContent";
 import { deleteToken, getToken, setToken } from "./token";
 
@@ -71,7 +71,6 @@ interface Settings {
   branch: string;
   targetFolders: string[];
   pathMappings: Record<string, string>;
-  conflictPolicy: ConflictPolicy;
 }
 
 function readSettings(): Settings {
@@ -92,7 +91,6 @@ function readSettings(): Settings {
     branch: (c.get<string>("branch") ?? "main").trim() || "main",
     targetFolders,
     pathMappings,
-    conflictPolicy: (c.get<string>("conflictPolicy") as ConflictPolicy) ?? "prompt",
   };
 }
 
@@ -250,7 +248,13 @@ async function runSync(
             const files =
               reg.workspaces[folder.uri.fsPath]?.files ??
               localizeStateFiles(prevState.files, settings.pathMappings);
-            removeManagedFiles(folder.uri.fsPath, files);
+            const removed = removeManagedFiles(folder.uri.fsPath, files);
+            if (removed.keptPaths.length > 0) {
+              log(`Kept ${removed.keptPaths.length} file(s) with local edits during repo change:`);
+              for (const rel of removed.keptPaths) {
+                log(`  ${folder.name}/${rel}`);
+              }
+            }
           }
           await saveState(context, folder, { ref: "", files: {} });
           setWorkspaceFiles(folder.uri.fsPath, {});
@@ -263,7 +267,6 @@ async function runSync(
             repoRef,
             targetFolders: settings.targetFolders,
             pathMappings: settings.pathMappings,
-            conflictPolicy: settings.conflictPolicy,
           }
         );
         if (result.noFilesFound) {
@@ -347,8 +350,8 @@ async function removeSyncedFiles(context: vscode.ExtensionContext): Promise<void
 
   const settings = readSettings();
   const reg = readRegistry();
-  let deleted = 0;
   const allKeptPaths: Array<{ folder: vscode.WorkspaceFolder; rel: string }> = [];
+  const allDeletedPaths: Array<{ folder: vscode.WorkspaceFolder; rel: string }> = [];
 
   for (const folder of folders) {
     // Registry holds local (on-disk) paths; state.files is keyed by repo path,
@@ -360,45 +363,48 @@ async function removeSyncedFiles(context: vscode.ExtensionContext): Promise<void
       continue;
     }
     const summary = removeManagedFiles(folder.uri.fsPath, files);
-    deleted += summary.deleted;
     for (const rel of summary.keptPaths) {
       allKeptPaths.push({ folder, rel });
+    }
+    for (const rel of summary.deletedPaths) {
+      allDeletedPaths.push({ folder, rel });
     }
     setWorkspaceFiles(folder.uri.fsPath, {});
     await saveState(context, folder, { ref: "", files: {} });
   }
 
+  const deleted = allDeletedPaths.length;
   const kept = allKeptPaths.length;
-  if (kept > 0) {
-    log(`Removed ${deleted} synced file(s). Kept ${kept} with local edits:`);
-    for (const { folder, rel } of allKeptPaths) {
-      log(`  ${folder.name}/${rel}`);
+  if (deleted > 0 || kept > 0) {
+    if (deleted > 0) {
+      log(`Removed ${deleted} synced file(s):`);
+      for (const { folder, rel } of allDeletedPaths) {
+        log(`  ${folder.name}/${rel}`);
+      }
+    }
+    if (kept > 0) {
+      log(`Kept ${kept} file(s) with local edits:`);
+      for (const { folder, rel } of allKeptPaths) {
+        log(`  ${folder.name}/${rel}`);
+      }
     }
   } else {
-    log(`Removed ${deleted} synced file(s).`);
+    log(`Removed 0 synced files.`);
   }
 
+  const showDetails = (choice: string | undefined) => { if (choice === "Show details") { showOutput(); } };
   if (kept > 0) {
-    const action = await vscode.window.showWarningMessage(
-      `AI Setup Sync: Removed ${deleted} ${deleted === 1 ? "file" : "files"}. ${kept} ${kept === 1 ? "file was" : "files were"} kept due to local edits — see the Output panel for details.`,
-      "Force remove all",
-      "Keep them"
-    );
-    if (action === "Force remove all") {
-      let forceDeleted = 0;
-      for (const folder of folders) {
-        const paths = allKeptPaths
-          .filter((p) => p.folder === folder)
-          .map((p) => p.rel);
-        forceDeleted += forceRemoveFiles(folder.uri.fsPath, paths);
-      }
-      log(`Force-removed ${forceDeleted} additional ${forceDeleted === 1 ? "file" : "files"}.`);
-      void vscode.window.showInformationMessage(
-        `AI Setup Sync: Removed ${forceDeleted} additional ${forceDeleted === 1 ? "file" : "files"}.`
-      );
-    }
-  } else {
-    void vscode.window.showInformationMessage(`AI Setup Sync: Removed ${deleted} synced ${deleted === 1 ? "file" : "files"}.`);
+    void vscode.window.showWarningMessage(
+      deleted > 0
+        ? `AI Setup Sync: Removed ${deleted} ${deleted === 1 ? "file" : "files"}, kept ${kept} with local edits.`
+        : `AI Setup Sync: ${kept} ${kept === 1 ? "file" : "files"} kept due to local edits.`,
+      "Show details"
+    ).then(showDetails);
+  } else if (deleted > 0) {
+    void vscode.window.showInformationMessage(
+      `AI Setup Sync: Removed ${deleted} synced ${deleted === 1 ? "file" : "files"}.`,
+      "Show details"
+    ).then(showDetails);
   }
 }
 
@@ -488,8 +494,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // stuck on "unconfigured") and re-sync when a content-affecting setting changes so the
   // result reflects the new value immediately. The re-sync is debounced: the settings UI
   // writes on every keystroke, so syncing mid-edit (against a half-typed URL or branch)
-  // would flash an error and waste requests. We wait for the value to settle, and ignore
-  // conflictPolicy (which doesn't change the sync's inputs, only how conflicts resolve).
+  // would flash an error and waste requests.
   const CONTENT_KEYS = ["repository", "branch", "targetFolders", "pathMappings"];
   // Settings that change which files are managed — a 304 from GitHub won't trigger the
   // full-tree path, so we invalidate the cached ETag to force a fresh tree fetch that

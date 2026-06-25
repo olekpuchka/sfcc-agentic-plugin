@@ -8,8 +8,8 @@ import { gitBlobSha } from "./blobSha";
 import { MARKER_BEGIN, stripBlock } from "./gitignore";
 
 export interface CleanupSummary {
-  deleted: number;
-  keptModified: number;
+  /** Repo-relative paths of files that were successfully deleted. */
+  deletedPaths: string[];
   /** Repo-relative paths of files kept because their content differed from the last synced SHA. */
   keptPaths: string[];
 }
@@ -26,7 +26,7 @@ export function removeManagedFiles(
   workspaceFsPath: string,
   files: Record<string, string>
 ): CleanupSummary {
-  const summary: CleanupSummary = { deleted: 0, keptModified: 0, keptPaths: [] };
+  const summary: CleanupSummary = { deletedPaths: [], keptPaths: [] };
   const dirsTouched = new Set<string>();
   const workspaceResolved = path.resolve(workspaceFsPath);
 
@@ -40,10 +40,9 @@ export function removeManagedFiles(
       const content = fs.readFileSync(full);
       if (gitBlobSha(content) === sha) {
         fs.unlinkSync(full);
-        summary.deleted++;
+        summary.deletedPaths.push(rel);
         dirsTouched.add(path.dirname(full));
       } else {
-        summary.keptModified++;
         summary.keptPaths.push(rel);
       }
     } catch {
@@ -54,31 +53,6 @@ export function removeManagedFiles(
   pruneEmptyDirs(workspaceFsPath, dirsTouched);
   cleanGitExclude(workspaceFsPath);
   return summary;
-}
-
-/**
- * Removes the given repo-relative paths unconditionally (no SHA check).
- * Used for "Force remove" after the user has already been warned about local edits.
- */
-export function forceRemoveFiles(workspaceFsPath: string, relpaths: string[]): number {
-  const workspaceResolved = path.resolve(workspaceFsPath);
-  const dirsTouched = new Set<string>();
-  let removed = 0;
-  for (const rel of relpaths) {
-    const full = path.resolve(workspaceFsPath, rel);
-    if (!full.startsWith(workspaceResolved + path.sep)) {
-      continue;
-    }
-    try {
-      fs.unlinkSync(full);
-      removed++;
-      dirsTouched.add(path.dirname(full));
-    } catch {
-      // Already gone or unreadable.
-    }
-  }
-  pruneEmptyDirs(workspaceFsPath, dirsTouched);
-  return removed;
 }
 
 /** Removes now-empty directories, walking up toward (but not removing) the workspace root. */

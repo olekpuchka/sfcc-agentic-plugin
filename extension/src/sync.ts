@@ -38,23 +38,20 @@ async function parallelLimit<T>(
   }
 }
 
-export type ConflictPolicy = "prompt" | "overwrite" | "skip";
-
-export interface SyncOptions {
+interface SyncOptions {
   repoRef: RepoRef;
   targetFolders: string[];
   /** Maps repo-relative source paths to workspace-relative destination paths. */
   pathMappings: Record<string, string>;
-  conflictPolicy: ConflictPolicy;
 }
 
-export interface SyncResult {
+interface SyncResult {
   added: number;
   updated: number;
   skipped: number;
   upToDate: number;
   deleted: number;
-  /** Locally-edited files that were removed from the repo but kept on disk (per conflictPolicy). */
+  /** Locally-edited files that were removed from the repo but kept on disk. */
   keptDeleted: number;
   /** True if nothing on disk changed (used to keep auto-sync quiet). */
   noChanges: boolean;
@@ -161,7 +158,7 @@ export async function syncFolder(
   workspaceFolder: vscode.WorkspaceFolder,
   options: SyncOptions
 ): Promise<SyncResult> {
-  const { repoRef, targetFolders, pathMappings, conflictPolicy } = options;
+  const { repoRef, targetFolders, pathMappings } = options;
   // Sort once so every toLocalPath call in this sync run shares the same order.
   const sortedMappings: [string, string][] = Object.entries(pathMappings).sort((a, b) => b[0].length - a[0].length);
   const state = getState(context, workspaceFolder);
@@ -171,7 +168,7 @@ export async function syncFolder(
   // Cheap short-circuit: a 304 means the repo tree is byte-identical to the last
   // sync (and the request didn't count against the GitHub rate limit). The repo
   // is unchanged — but a file may have been deleted locally (restore it) or
-  // edited locally without the repo changing (prompt if conflictPolicy allows).
+  // edited locally without the repo changing (prompt the user).
   if (tree.notModified) {
     // One pass: detect missing and locally-modified files simultaneously (OPT-1).
     const missing: { repoPath: string; localPath: string }[] = [];
@@ -254,7 +251,7 @@ export async function syncFolder(
     let toKeep: typeof locallyModified = [];
 
     if (locallyModified.length > 0) {
-      const resolution = await resolveConflicts(locallyModified, conflictPolicy, repoRef, workspaceFolder);
+      const resolution = await resolveConflicts(locallyModified, repoRef, workspaceFolder);
       wasDismissed = resolution.wasDismissed;
 
       toOverwrite = locallyModified.filter((p) => resolution.shouldOverwrite(p.localPath));
@@ -401,7 +398,6 @@ export async function syncFolder(
   const conflicts = planned.filter((p) => p.classification === "conflict");
   const { shouldOverwrite: overwriteConflict, wasDismissed } = await resolveConflicts(
     conflicts,
-    conflictPolicy,
     repoRef,
     workspaceFolder
   );
@@ -492,7 +488,7 @@ export async function syncFolder(
 
   // Delete files removed from the repo, plus files excluded by the current target folder /
   // path mapping settings. Unmodified files are deleted silently; locally-edited ones are
-  // handled per conflictPolicy.
+  // prompted before deletion.
   let deleteWasDismissed = false;
   const allRemovedPaths = [...removedInRepo, ...excludedBySettings];
   if (allRemovedPaths.length > 0) {
@@ -519,7 +515,7 @@ export async function syncFolder(
     });
 
     const editedLocalPaths = editedAndRemoved.map(({ localPath }) => localPath);
-    const deleteResolution = await resolveDeleteConflicts(editedLocalPaths, conflictPolicy);
+    const deleteResolution = await resolveDeleteConflicts(editedLocalPaths);
     deleteWasDismissed = deleteResolution.wasDismissed;
 
     const deletedLocalPaths: string[] = [];
@@ -737,7 +733,6 @@ async function closeFileDiff(localPath: string): Promise<void> {
  */
 async function resolveConflicts(
   conflicts: PlannedFile[],
-  policy: ConflictPolicy,
   repoRef: RepoRef,
   workspaceFolder: vscode.WorkspaceFolder
 ): Promise<ConflictResolution> {
@@ -745,14 +740,8 @@ async function resolveConflicts(
   if (conflicts.length === 0) {
     return noop;
   }
-  if (policy === "overwrite") {
-    return { shouldOverwrite: () => true, wasDismissed: false };
-  }
-  if (policy === "skip") {
-    return noop;
-  }
 
-  // policy === "prompt": for multiple files offer a batched choice first; for a single
+  // For multiple files offer a batched choice first; for a single
   // file go straight to per-file review ("Review each" with one item is the same thing).
   const overwrite = new Set<string>();
 
@@ -854,17 +843,10 @@ async function resolveConflicts(
  * Similar to resolveConflicts but simpler: no diff view (there is no repo version to show).
  */
 async function resolveDeleteConflicts(
-  localPaths: string[],
-  policy: ConflictPolicy
+  localPaths: string[]
 ): Promise<{ shouldDelete: (localPath: string) => boolean; wasDismissed: boolean }> {
   const noop = { shouldDelete: () => false, wasDismissed: false };
   if (localPaths.length === 0) {
-    return noop;
-  }
-  if (policy === "overwrite") {
-    return { shouldDelete: () => true, wasDismissed: false };
-  }
-  if (policy === "skip") {
     return noop;
   }
 
@@ -947,7 +929,7 @@ function resultParts(r: SyncResult): string[] {
   return parts;
 }
 
-export function summarize(folderName: string, r: SyncResult): string {
+function summarize(folderName: string, r: SyncResult): string {
   return `${folderName}: ${resultParts(r).join(", ")}.`;
 }
 

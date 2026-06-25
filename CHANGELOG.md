@@ -4,6 +4,21 @@ All notable changes to the **AI Setup Sync** extension are documented here.
 
 ---
 
+## [1.4.1] — 2026-06-25
+
+### Changed
+
+- **Conflict policy removed** — the `aiSetupSync.conflictPolicy` setting (`prompt` / `overwrite` / `skip`) has been removed. Conflicts are always resolved interactively: you're prompted per file with a diff viewer. Users on `overwrite` or `skip` will now see the prompt instead.
+- **Remove Synced Files — Show details** — the removal toast now includes a **Show details** button (matching the sync success toast) that opens the Output panel with a per-file log of what was removed and what was kept.
+- **Remove Synced Files — kept files now logged during repo change** — when the repository URL changes and old files are cleaned up, any locally-edited files that were kept are now logged to the Output panel (previously silent).
+
+### Fixed
+
+- **Remove Synced Files toast** — when all files had local edits (nothing deleted), the warning toast previously read "Removed 0 files. N files were kept…" — it now reads "N files kept due to local edits." correctly.
+- **Output log when only kept files** — when every synced file had local edits, the Output panel showed only "Removed 0 synced files." with no list of kept paths. Kept paths are now always logged when present.
+
+---
+
 ## [1.4.0] — 2026-06-25
 
 ### Added
