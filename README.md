@@ -22,6 +22,7 @@ Copilot, Cursor, Google Antigravity, Gemini CLI, OpenAI Codex, and more. No copy
 - **Supports every tool** — any file-based AI config works out of the box (Claude Code, Copilot, Cursor, and more). Custom path mappings cover anything else.
 - **Protects local edits** — detects files you've changed and prompts before overwriting, with a built-in diff.
 - **Stays out of git** — synced files are added to `.git/info/exclude`, never cluttering your changes.
+- **Works across parallel agent sessions** — synced configs are automatically available in every Claude Code and Codex worktree, so AI tools have your setup no matter which isolated session they run in.
 
 ## How it works
 

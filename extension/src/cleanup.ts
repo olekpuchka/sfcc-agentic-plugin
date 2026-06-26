@@ -52,6 +52,7 @@ export function removeManagedFiles(
 
   pruneEmptyDirs(workspaceFsPath, dirsTouched);
   cleanGitExclude(workspaceFsPath);
+  cleanWorktreeInclude(workspaceFsPath);
   return summary;
 }
 
@@ -70,6 +71,24 @@ function pruneEmptyDirs(workspaceFsPath: string, dirs: Set<string>): void {
         break;
       }
     }
+  }
+}
+
+function cleanWorktreeInclude(workspaceFsPath: string): void {
+  const include = path.join(workspaceFsPath, ".worktreeinclude");
+  try {
+    const content = fs.readFileSync(include, "utf8");
+    if (!content.includes(MARKER_BEGIN)) {
+      return;
+    }
+    const stripped = stripBlock(content);
+    if (stripped.trim() === "") {
+      fs.unlinkSync(include);
+    } else {
+      fs.writeFileSync(include, stripped, "utf8");
+    }
+  } catch {
+    // No file — nothing to clean.
   }
 }
 

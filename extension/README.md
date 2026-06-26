@@ -58,6 +58,7 @@ detects those edits and lets them choose what to keep, so no work is ever silent
 - **Maps paths flexibly** — translate any repo path to the local path a tool expects (e.g. `Claude/` → `.claude/`), or map a whole subfolder to your project root with `"projectA": "/"`.
 - **Handles deletions safely** — files removed from the repo or excluded by a settings change are removed locally; your local edits are protected, and emptied directories are cleaned up.
 - **Stays out of git** — synced files are added to `.git/info/exclude`, so they never clutter your pending changes.
+- **Works across parallel agent sessions** — synced configs are automatically available in every Claude Code and Codex worktree, so AI tools have your setup no matter which isolated session they run in.
 - **Supports private, SSO, and Enterprise Server repos** — GitHub token stored securely in the OS keychain (VS Code SecretStorage).
 - **Fully configurable** — choose the branch and which folders to sync.
 
@@ -360,6 +361,27 @@ Synced files are automatically added to `.git/info/exclude` (per-clone, never co
 don't show up as pending changes. Only the exact synced files are excluded — anything you create
 yourself in the same folders (e.g. a project-specific skill) stays visible to git and committable
 normally.
+
+### Parallel agent sessions (worktrees)
+
+Claude Code and OpenAI Codex can run tasks in isolated copies of your repo called
+[git worktrees](https://git-scm.com/docs/git-worktree) — for example, fixing a bug in one terminal
+while building a feature in another. Each worktree is a fresh checkout, so synced files wouldn't
+normally be there.
+
+AI Setup Sync handles this automatically by maintaining a `.worktreeinclude` file at your workspace
+root. Both tools read it when creating a worktree and copy any matching gitignored files across, so
+your AI configs are present in every session without any extra steps.
+
+The patterns mirror your sync configuration:
+
+- **Folder targets** (e.g. `.claude`, `.github`) copy the whole folder — including files added to
+  the repo after the last sync.
+- **File targets** (e.g. `CLAUDE.md`, `AGENTS.md`) copy the exact file.
+- **Path mappings** use the local destination, file or folder (e.g. `"Claude": ".claude"` copies
+  the whole `.claude/` folder; `"src/config.json": ".cursor/config.json"` copies just that file).
+
+`.worktreeinclude` itself is excluded from git tracking so it never appears as an untracked file.
 
 ## Removing synced files
 

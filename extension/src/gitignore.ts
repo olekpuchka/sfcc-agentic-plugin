@@ -17,6 +17,34 @@ export function computePatterns(syncedPaths: string[]): string[] {
   return [...new Set(syncedPaths.map((p) => `/${p}`))].sort();
 }
 
+/**
+ * Maps synced files to .worktreeinclude patterns.
+ *
+ * - Files/dirs that arrived via a target folder (file or directory) use the
+ *   target folder itself as the pattern.
+ * - Files that arrived via a path mapping use the mapping destination as the
+ *   pattern, so a directory mapping produces one folder pattern rather than
+ *   per-file entries.
+ * - Any remaining files fall back to their exact local path.
+ */
+export function computeWorktreePatterns(
+  managedLocalPaths: string[],
+  targetFolders: string[],
+  pathMappingValues: string[]
+): string[] {
+  const patterns = new Set<string>();
+  for (const localPath of managedLocalPaths) {
+    const folder = targetFolders.find((f) => localPath === f || localPath.startsWith(f + "/"));
+    if (folder) {
+      patterns.add(`/${folder}`);
+      continue;
+    }
+    const dest = pathMappingValues.find((d) => localPath === d || localPath.startsWith(d + "/"));
+    patterns.add(`/${dest ?? localPath}`);
+  }
+  return [...patterns].sort();
+}
+
 function renderBlock(patterns: string[]): string {
   return [
     MARKER_BEGIN,
@@ -33,9 +61,9 @@ export function stripBlock(content: string): string {
   if (start === -1) {
     return content;
   }
-  let end = lines.indexOf(MARKER_END, start);
+  const end = lines.indexOf(MARKER_END, start);
   if (end === -1) {
-    end = lines.length - 1;
+    return content; // malformed block — no MARKER_END, leave file untouched
   }
   lines.splice(start, end - start + 1);
   // Collapse any leftover blank lines created by the removal.
@@ -55,8 +83,16 @@ export function upsertBlock(
 
   let next: string;
   if (hasBlock) {
-    const stripped = stripBlock(existing).replace(/\n+$/g, "");
-    next = stripped ? `${stripped}\n\n${block}\n` : `${block}\n`;
+    const strippedRaw = stripBlock(existing);
+    if (strippedRaw.includes(MARKER_BEGIN)) {
+      // Malformed block (no MARKER_END) — stripBlock couldn't remove it.
+      // Preserve any content before the marker; replace from it onwards.
+      const base = existing.slice(0, existing.indexOf(MARKER_BEGIN)).replace(/\n+$/g, "");
+      next = base ? `${base}\n\n${block}\n` : `${block}\n`;
+    } else {
+      const stripped = strippedRaw.replace(/\n+$/g, "");
+      next = stripped ? `${stripped}\n\n${block}\n` : `${block}\n`;
+    }
   } else {
     const base = existing.replace(/\n+$/g, "");
     next = base ? `${base}\n\n${block}\n` : `${block}\n`;

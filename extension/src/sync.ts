@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { gitBlobSha } from "./blobSha";
 import { getRawFile, getTree, RepoRef, TreeEntry, ConfigError, RateLimitError } from "./github";
 import { getState, saveState, SyncState } from "./state";
-import { computePatterns, upsertBlock } from "./gitignore";
+import { computePatterns, computeWorktreePatterns, upsertBlock, stripBlock, MARKER_BEGIN } from "./gitignore";
 import { readRegistry, setWorkspaceFiles } from "./registry";
 import { log } from "./output";
 import { cacheRemoteContent, clearRemoteContent, remoteDocUri } from "./remoteContent";
@@ -237,8 +237,10 @@ export async function syncFolder(
             localFiles[lp] = sha;
           }
         }
+        const managedPaths = Object.keys(localFiles);
         setWorkspaceFiles(workspaceFolder.uri.fsPath, localFiles);
-        await applyGitExclude(workspaceFolder, Object.keys(localFiles));
+        await applyGitExclude(workspaceFolder, managedPaths.length > 0 ? [...managedPaths, ".worktreeinclude"] : managedPaths);
+        await applyWorktreeInclude(workspaceFolder, managedPaths, targetFolders, pathMappings);
       } catch (err) {
         log(`Warning: failed to update registry/gitignore after restore: ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -641,8 +643,10 @@ export async function syncFolder(
   }
 
   try {
+    const managedPaths = Object.keys(localFiles);
     setWorkspaceFiles(workspaceFolder.uri.fsPath, localFiles);
-    await applyGitExclude(workspaceFolder, Object.keys(localFiles));
+    await applyGitExclude(workspaceFolder, managedPaths.length > 0 ? [...managedPaths, ".worktreeinclude"] : managedPaths);
+    await applyWorktreeInclude(workspaceFolder, managedPaths, targetFolders, pathMappings);
   } catch (err) {
     log(`Warning: failed to update registry/gitignore: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -680,6 +684,55 @@ async function applyGitExclude(
   if (next !== undefined) {
     await vscode.workspace.fs.createDirectory(infoDir);
     await vscode.workspace.fs.writeFile(excludeUri, Buffer.from(next, "utf8"));
+  }
+}
+
+/**
+ * Inserts/updates (or removes) the managed block in `.worktreeinclude` at the
+ * workspace root. Claude Code reads this file when creating worktrees and copies
+ * any matching gitignored files into the new worktree — ensuring synced AI config
+ * files are available in isolated worktree sessions. No-ops if the workspace is
+ * not a plain git repository.
+ *
+ * `.worktreeinclude` itself is added to `.git/info/exclude` by the caller so it
+ * never shows up as an untracked change.
+ */
+async function applyWorktreeInclude(
+  workspaceFolder: vscode.WorkspaceFolder,
+  managedPaths: string[],
+  targetFolders: string[],
+  pathMappings: Record<string, string>
+): Promise<void> {
+  const gitDir = vscode.Uri.joinPath(workspaceFolder.uri, ".git");
+  try {
+    const stat = await vscode.workspace.fs.stat(gitDir);
+    if (!(stat.type & vscode.FileType.Directory)) {
+      return;
+    }
+  } catch {
+    return; // not a git repo
+  }
+
+  const includeUri = vscode.Uri.joinPath(workspaceFolder.uri, ".worktreeinclude");
+  const existing = (await readIfExists(includeUri))?.toString("utf8") ?? "";
+
+  if (managedPaths.length === 0) {
+    // No managed files — strip our block; delete the file if nothing else remains.
+    if (!existing.includes(MARKER_BEGIN)) {
+      return;
+    }
+    const stripped = stripBlock(existing);
+    if (stripped.trim() === "") {
+      await vscode.workspace.fs.delete(includeUri, { useTrash: false });
+    } else {
+      await vscode.workspace.fs.writeFile(includeUri, Buffer.from(stripped, "utf8"));
+    }
+    return;
+  }
+
+  const next = upsertBlock(existing, computeWorktreePatterns(managedPaths, targetFolders, Object.values(pathMappings)));
+  if (next !== undefined) {
+    await vscode.workspace.fs.writeFile(includeUri, Buffer.from(next, "utf8"));
   }
 }
 
