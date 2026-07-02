@@ -64,7 +64,7 @@ function setStatus(
   }
 }
 
-const DEFAULT_TARGET_FOLDERS = [".claude", "CLAUDE.md", ".github", ".cursor", ".agents", "AGENTS.md", ".gemini", "GEMINI.md", ".codex"];
+const DEFAULT_TARGET_FOLDERS = [".claude", "CLAUDE.md", ".mcp.json", ".github", ".cursor", ".agents", "AGENTS.md", ".gemini", "GEMINI.md", ".codex"];
 const DEFAULT_TARGET_MAP: Record<string, boolean> = Object.fromEntries(DEFAULT_TARGET_FOLDERS.map((f) => [f, true]));
 
 interface Settings {

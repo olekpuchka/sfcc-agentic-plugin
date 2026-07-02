@@ -4,6 +4,14 @@ All notable changes to the **AI Setup Sync** extension are documented here.
 
 ---
 
+## [1.5.4] — 2026-07-02
+
+### Added
+
+- **`.mcp.json` synced by default** — Claude Code's project-scoped MCP server config is now included in the default `targetFolders`, alongside `.claude` and `CLAUDE.md`. Disable it via `"aiSetupSync.targetFolders": { ".mcp.json": false }` if your MCP config contains machine-specific paths or secrets you don't want synced.
+
+---
+
 ## [1.5.3] — 2026-06-26
 
 ### Added

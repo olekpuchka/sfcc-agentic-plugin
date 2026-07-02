@@ -148,6 +148,7 @@ By default, the extension syncs these paths from the `main` branch (configurable
 | --- | --- |
 | `.claude` | Claude Code |
 | `CLAUDE.md` | Claude Code |
+| `.mcp.json` | Claude Code (project-scoped MCP servers) |
 | `.github` | GitHub Copilot |
 | `.cursor` | Cursor |
 | `.agents` | Google Antigravity |
